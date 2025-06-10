@@ -30,12 +30,13 @@ export default defineConfig({
     port: 3000,
     host: true
   },
-  preview: {
+   preview: {
     port: 3000,
     host: true,
     headers: {
       "Content-Type": "application/javascript"
     }
-  } // 🔹 Cierre correcto de `preview`
-}); // 🔹 Cierre correcto de `defineConfig()`
+  }
+});
+
 
