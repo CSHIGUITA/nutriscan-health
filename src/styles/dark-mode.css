@@ -1,0 +1,379 @@
+/* Modo Oscuro - Contraste Perfecto y Legible */
+
+/* Variables CSS optimizadas */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
+  --card-bg: #ffffff;
+}
+
+.dark {
+  --bg-primary: #0a0f1c;
+  --bg-secondary: #1a202c;
+  --bg-tertiary: #2d3748;
+  --text-primary: #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-muted: #a0aec0;
+  --border-color: #4a5568;
+  --card-bg: #1a202c;
+  --accent-blue: #4299e1;
+  --accent-green: #48bb78;
+  --accent-purple: #9f7aea;
+  --accent-red: #f56565;
+  --accent-yellow: #ed8936;
+}
+
+/* Fondo principal con contraste alto */
+body {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  transition: all 0.3s ease;
+}
+
+.dark body {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Contenedor principal */
+.min-h-screen {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .min-h-screen {
+  background: linear-gradient(135deg, #0a0f1c 0%, #1a202c 100%) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Gradientes mejorados */
+.bg-gradient-to-br {
+  background: linear-gradient(to bottom right, #dbeafe, #dcfce7) !important;
+}
+
+.dark .bg-gradient-to-br {
+  background: linear-gradient(to bottom right, #0a0f1c, #1a202c) !important;
+}
+
+/* Tarjetas con contraste perfecto */
+.bg-white {
+  background-color: var(--card-bg) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.dark .bg-white {
+  background-color: var(--card-bg) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .bg-blue-50 {
+  background-color: rgba(66, 153, 225, 0.15) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .bg-green-50 {
+  background-color: rgba(72, 187, 120, 0.15) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Texto con máximo contraste */
+.text-gray-900,
+.text-gray-800,
+.text-gray-700,
+.text-black {
+  color: var(--text-primary) !important;
+}
+
+.text-gray-600,
+.text-gray-500 {
+  color: var(--text-secondary) !important;
+}
+
+.text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-gray-700,
+.dark .text-black {
+  color: var(--text-primary) !important;
+}
+
+.dark .text-gray-600,
+.dark .text-gray-500 {
+  color: var(--text-secondary) !important;
+}
+
+.dark .text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+/* Bordes visibles */
+.border-gray-100,
+.border-gray-200,
+.border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+/* Sombras mejoradas */
+.dark .shadow-xl {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+}
+
+.dark .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Inputs con contraste alto */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+  border-width: 1px !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1) !important;
+}
+
+/* Botones con colores vibrantes */
+.dark .bg-blue-600 {
+  background-color: var(--accent-blue) !important;
+  color: white !important;
+}
+
+.dark .bg-green-600 {
+  background-color: var(--accent-green) !important;
+  color: white !important;
+}
+
+.dark .bg-purple-600 {
+  background-color: var(--accent-purple) !important;
+  color: white !important;
+}
+
+.dark .bg-red-600 {
+  background-color: var(--accent-red) !important;
+  color: white !important;
+}
+
+.dark .bg-yellow-600 {
+  background-color: var(--accent-yellow) !important;
+  color: white !important;
+}
+
+/* Estados hover */
+.dark .hover\:bg-blue-700:hover {
+  background-color: #3182ce !important;
+}
+
+.dark .hover\:bg-green-700:hover {
+  background-color: #38a169 !important;
+}
+
+.dark .hover\:bg-purple-700:hover {
+  background-color: #805ad5 !important;
+}
+
+.dark .hover\:bg-gray-50:hover {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .hover\:bg-gray-100:hover {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Badges con mejor contraste */
+.dark .bg-red-100 {
+  background-color: rgba(245, 101, 101, 0.2) !important;
+  color: #feb2b2 !important;
+}
+
+.dark .bg-blue-100 {
+  background-color: rgba(66, 153, 225, 0.2) !important;
+  color: #90cdf4 !important;
+}
+
+.dark .bg-green-100 {
+  background-color: rgba(72, 187, 120, 0.2) !important;
+  color: #9ae6b4 !important;
+}
+
+.dark .bg-yellow-100 {
+  background-color: rgba(237, 137, 54, 0.2) !important;
+  color: #f6e05e !important;
+}
+
+.dark .bg-purple-100 {
+  background-color: rgba(159, 122, 234, 0.2) !important;
+  color: #d6bcfa !important;
+}
+
+.dark .bg-pink-100 {
+  background-color: rgba(237, 100, 166, 0.2) !important;
+  color: #f687b3 !important;
+}
+
+.dark .text-red-600 {
+  color: #feb2b2 !important;
+}
+
+.dark .text-blue-600 {
+  color: #90cdf4 !important;
+}
+
+.dark .text-green-600 {
+  color: #9ae6b4 !important;
+}
+
+.dark .text-yellow-600 {
+  color: #f6e05e !important;
+}
+
+.dark .text-purple-600 {
+  color: #d6bcfa !important;
+}
+
+/* Navegación inferior */
+.dark .fixed.bottom-0 {
+  background-color: var(--card-bg) !important;
+  border-top: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Scrollbar mejorada */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--border-color);
+}
+
+/* Asegurar contraste en todos los elementos */
+.dark * {
+  border-color: var(--border-color);
+}
+
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+.dark p, .dark span, .dark div, .dark label {
+  color: var(--text-primary) !important;
+}
+
+.dark button {
+  color: white !important;
+  font-weight: 500;
+}
+
+.dark a {
+  color: var(--accent-blue) !important;
+}
+
+.dark a:hover {
+  color: #63b3ed !important;
+}
+
+/* Condiciones de salud con mejor contraste */
+.dark .condition-card {
+  background-color: var(--card-bg) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .condition-card.selected {
+  border-color: var(--accent-blue) !important;
+  background-color: rgba(66, 153, 225, 0.1) !important;
+}
+
+/* Escáner QR */
+.dark #qr-reader {
+  background-color: var(--bg-tertiary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* Animaciones suaves */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
+}
+
+/* Modo oscuro específico para elementos complejos */
+.dark .rounded-lg,
+.dark .rounded-xl {
+  background-color: var(--card-bg) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .from-blue-50 {
+  --tw-gradient-from: var(--bg-primary) !important;
+}
+
+.dark .to-green-50 {
+  --tw-gradient-to: var(--bg-secondary) !important;
+}
+
+/* Asegurar que el texto sea siempre legible */
+.dark .opacity-75 {
+  opacity: 0.9 !important;
+}
+
+.dark .opacity-50 {
+  opacity: 0.7 !important;
+}
+
