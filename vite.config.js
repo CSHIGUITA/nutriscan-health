@@ -5,7 +5,7 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react({ jsxRuntime: "automatic" }), tailwindcss()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -30,7 +30,7 @@ export default defineConfig({
     port: 3000,
     host: true
   },
-   preview: {
+  preview: {
     port: 3000,
     host: true,
     headers: {
@@ -38,5 +38,3 @@ export default defineConfig({
     }
   }
 });
-
-
