@@ -32,6 +32,8 @@ export default defineConfig({
   },
   preview: {
     port: 3000,
-    host: true
+    host: true,
+ headers: {
+    "Content-Type": "application/javascript"
   }
-})
+}
