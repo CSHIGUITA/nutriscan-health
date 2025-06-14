@@ -29,12 +29,6 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true
-  },
-  preview: {
-    port: 3000,
-    host: true,
-    headers: {
-      "Content-Type": "application/javascript"
-    }
   }
 });
+
