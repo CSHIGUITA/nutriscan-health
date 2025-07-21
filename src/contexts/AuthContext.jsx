@@ -1,478 +1,314 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Html5QrcodeScanner } from 'html5-qrcode'
-import { Camera, ArrowLeft, Search, Loader2 } from 'lucide-react'
-import { toast } from 'react-toastify'
-import { usePremium } from '../contexts/PremiumContext'
-import { useProductHistory } from '../contexts/ProductHistoryContext'
-import { useHealthProfile } from '../contexts/HealthProfileContext'
+import React, { createContext, useContext, useState, useEffect } from 'react'
 
-const Scanner = () => {
-  const navigate = useNavigate()
-  const [isScanning, setIsScanning] = useState(false)
-  const [manualCode, setManualCode] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [product, setProduct] = useState(null)
-  const [analysis, setAnalysis] = useState(null)
-  const scannerRef = useRef(null)
-  const { canScan, incrementDailyScans, subscriptionType } = usePremium()
-  const { addProductToHistory } = useProductHistory()
-  const { healthProfile } = useHealthProfile()
+const AuthContext = createContext()
 
-  // Base de datos ampliada de productos
-  const productDatabase = {
-    '7501000673209': {
-      name: 'Galletas con salvado y miel',
-      brand: 'Tosh',
-      image: 'https://via.placeholder.com/200x200?text=Tosh+Galletas',
-      nutrition: {
-        calories: 450,
-        protein: 8.5,
-        carbs: 65,
-        fat: 16,
-        fiber: 4.2,
-        sugar: 18,
-        sodium: 380
-      },
-      ingredients: ['Harina de trigo', 'Azúcar', 'Aceite vegetal', 'Salvado de trigo', 'Miel', 'Sal'],
-      allergens: ['Gluten', 'Puede contener trazas de soya']
-    },
-    '7501000673216': {
-      name: 'Galletas Marías',
-      brand: 'Gamesa',
-      image: 'https://via.placeholder.com/200x200?text=Gamesa+Marias',
-      nutrition: {
-        calories: 420,
-        protein: 7,
-        carbs: 70,
-        fat: 12,
-        fiber: 2,
-        sugar: 15,
-        sodium: 320
-      },
-      ingredients: ['Harina de trigo', 'Azúcar', 'Aceite vegetal', 'Sal'],
-      allergens: ['Gluten']
-    },
-    '7501000673223': {
-      name: 'Coca Cola Original',
-      brand: 'Coca Cola',
-      image: 'https://via.placeholder.com/200x200?text=Coca+Cola',
-      nutrition: {
-        calories: 140,
-        protein: 0,
-        carbs: 39,
-        fat: 0,
-        fiber: 0,
-        sugar: 39,
-        sodium: 45
-      },
-      ingredients: ['Agua carbonatada', 'Azúcar', 'Concentrado de cola', 'Ácido fosfórico'],
-      allergens: []
-    }
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
   }
+  return context
+}
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null)
+  const [localProfile, setLocalProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    return () => {
-      if (scannerRef.current) {
-        try {
-          scannerRef.current.clear()
-        } catch (error) {
-          console.log('Scanner cleanup error:', error)
-        }
-      }
+    const savedUser = localStorage.getItem('nutriscan_user')
+    const savedLocalProfile = localStorage.getItem('nutriscan_local_profile')
+    
+    if (savedUser) {
+      setUser(JSON.parse(savedUser))
     }
+    
+    if (savedLocalProfile) {
+      setLocalProfile(JSON.parse(savedLocalProfile))
+    }
+    
+    setLoading(false)
   }, [])
 
-  const startScanner = async () => {
-    if (!canScan()) {
-      toast.error(`Límite diario alcanzado. Plan ${subscriptionType}: ${subscriptionType === 'free' ? '3' : subscriptionType === 'premium' ? '50' : '∞'} escaneos/día`)
-      return
-    }
-
+  const signIn = async (email, password) => {
     try {
-      setIsScanning(true)
-      
-      // Limpiar scanner anterior si existe
-      if (scannerRef.current) {
-        try {
-          await scannerRef.current.clear()
-        } catch (error) {
-          console.log('Previous scanner clear error:', error)
-        }
+      const userData = {
+        id: Date.now().toString(),
+        email,
+        name: email.split('@')[0],
+        createdAt: new Date().toISOString()
       }
-
-      const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-        // CONFIGURACIÓN AUTOMÁTICA PARA CÁMARA POSTERIOR
-        videoConstraints: {
-          facingMode: { ideal: "environment" }, // Preferir cámara posterior
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        // Formatos soportados
-        formatsToSupport: [
-          Html5QrcodeScanner.SCAN_TYPE_CAMERA
-        ],
-        // Configuración avanzada
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true
-        },
-        // Configuración de UI
-        showTorchButtonIfSupported: true,
-        showZoomSliderIfSupported: true,
-        defaultZoomValueIfSupported: 2
-      }
-
-      // Crear nuevo scanner
-      scannerRef.current = new Html5QrcodeScanner("qr-reader", config, false)
       
-      // Renderizar scanner
-      scannerRef.current.render(
-        (decodedText) => {
-          handleScanSuccess(decodedText)
-          stopScanner()
-        },
-        (error) => {
-          // Silenciar errores de escaneo continuo
-          if (!error.includes('NotFoundException') && !error.includes('No MultiFormat Readers')) {
-            console.warn('Scanner error:', error)
-          }
-        }
+      setUser(userData)
+      localStorage.setItem('nutriscan_user', JSON.stringify(userData))
+      
+      return { user: userData, error: null }
+    } catch (error) {
+      return { user: null, error }
+    }
+  }
+
+  const signUp = async (email, password) => {
+    try {
+      const userData = {
+        id: Date.now().toString(),
+        email,
+        name: email.split('@')[0],
+        createdAt: new Date().toISOString()
+      }
+      
+      setUser(userData)
+      localStorage.setItem('nutriscan_user', JSON.stringify(userData))
+      
+      return { user: userData, error: null }
+    } catch (error) {
+      return { user: null, error }
+    }
+  }
+
+  const signInWithGoogle = async () => {
+    try {
+      // Crear una ventana popup para simular Google OAuth
+      const popup = window.open(
+        'about:blank',
+        'google-auth',
+        'width=500,height=600,scrollbars=yes,resizable=yes'
       )
 
-      // Ocultar selector de cámara después de un momento
-      setTimeout(() => {
-        try {
-          const cameraSelection = document.getElementById('qr-reader__camera_selection')
-          if (cameraSelection) {
-            cameraSelection.style.display = 'none'
-          }
-          
-          const cameraPermission = document.getElementById('qr-reader__camera_permission_button')
-          if (cameraPermission) {
-            cameraPermission.style.display = 'none'
-          }
+      // Crear contenido HTML para simular pantalla de Google
+      const googleAuthHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Iniciar sesión - Cuentas de Google</title>
+          <style>
+            body {
+              font-family: 'Google Sans', Roboto, Arial, sans-serif;
+              margin: 0;
+              padding: 20px;
+              background: #fff;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+            }
+            .container {
+              max-width: 400px;
+              padding: 40px;
+              border: 1px solid #dadce0;
+              border-radius: 8px;
+              text-align: center;
+            }
+            .logo {
+              width: 75px;
+              height: 24px;
+              margin-bottom: 16px;
+            }
+            h1 {
+              font-size: 24px;
+              font-weight: 400;
+              margin: 0 0 8px 0;
+              color: #202124;
+            }
+            p {
+              font-size: 16px;
+              color: #5f6368;
+              margin: 0 0 24px 0;
+            }
+            input {
+              width: 100%;
+              padding: 13px 15px;
+              border: 1px solid #dadce0;
+              border-radius: 4px;
+              font-size: 16px;
+              margin-bottom: 16px;
+              box-sizing: border-box;
+            }
+            input:focus {
+              outline: none;
+              border-color: #1a73e8;
+              box-shadow: 0 1px 6px rgba(32,33,36,.28);
+            }
+            .btn {
+              background: #1a73e8;
+              color: white;
+              border: none;
+              padding: 9px 24px;
+              border-radius: 4px;
+              font-size: 14px;
+              font-weight: 500;
+              cursor: pointer;
+              width: 100%;
+              margin-top: 16px;
+            }
+            .btn:hover {
+              background: #1557b0;
+            }
+            .btn:disabled {
+              background: #dadce0;
+              color: #5f6368;
+              cursor: not-allowed;
+            }
+            .error {
+              color: #d93025;
+              font-size: 14px;
+              margin-top: 8px;
+              display: none;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <svg class="logo" viewBox="0 0 272 92" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#4285F4" d="M115.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18C71.25 34.32 81.24 25 93.5 25s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44S80.99 39.2 80.99 47.18c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z"/>
+              <path fill="#EA4335" d="M163.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18c0-12.85 9.99-22.18 22.25-22.18s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44s-12.51 5.46-12.51 13.44c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z"/>
+              <path fill="#FBBC05" d="M209.75 26.34v39.82c0 16.38-9.66 23.07-21.08 23.07-10.75 0-17.22-7.19-19.66-13.07l8.48-3.53c1.51 3.61 5.21 7.87 11.17 7.87 7.31 0 11.84-4.51 11.84-13v-3.19h-.34c-2.18 2.69-6.38 5.04-11.68 5.04-11.09 0-21.25-9.66-21.25-22.09 0-12.52 10.16-22.26 21.25-22.26 5.29 0 9.49 2.35 11.68 4.96h.34v-3.61h9.25zm-8.56 20.92c0-7.81-5.21-13.52-11.84-13.52-6.72 0-12.35 5.71-12.35 13.52 0 7.73 5.63 13.36 12.35 13.36 6.63 0 11.84-5.63 11.84-13.36z"/>
+              <path fill="#34A853" d="M225 3v65h-9.5V3h9.5z"/>
+              <path fill="#EA4335" d="M262.02 54.48l7.56 5.04c-2.44 3.61-8.32 9.83-18.48 9.83-12.6 0-22.01-9.74-22.01-22.18 0-13.19 9.49-22.18 20.92-22.18 11.51 0 17.14 9.16 18.98 14.11l1.01 2.52-29.65 12.28c2.27 4.45 5.8 6.72 10.75 6.72 4.96 0 8.4-2.44 10.92-6.14zm-23.27-7.98l19.82-8.23c-1.09-2.77-4.37-4.7-8.23-4.7-4.95 0-11.84 4.37-11.59 12.93z"/>
+            </svg>
+            <h1>Iniciar sesión</h1>
+            <p>Continúa en NutriScan</p>
+            
+            <form id="googleForm">
+              <input type="email" id="email" placeholder="Correo electrónico o teléfono" required>
+              <input type="password" id="password" placeholder="Contraseña" required>
+              <div class="error" id="error">Correo electrónico o contraseña incorrectos</div>
+              <button type="submit" class="btn" id="submitBtn">Siguiente</button>
+            </form>
+          </div>
 
-          // Aplicar estilos al scanner
-          const scannerElement = document.getElementById('qr-reader')
-          if (scannerElement) {
-            scannerElement.style.border = '2px solid #3b82f6'
-            scannerElement.style.borderRadius = '12px'
-            scannerElement.style.overflow = 'hidden'
+          <script>
+            document.getElementById('googleForm').addEventListener('submit', function(e) {
+              e.preventDefault();
+              
+              const email = document.getElementById('email').value;
+              const password = document.getElementById('password').value;
+              const submitBtn = document.getElementById('submitBtn');
+              const errorDiv = document.getElementById('error');
+              
+              if (!email || !password) {
+                errorDiv.style.display = 'block';
+                return;
+              }
+              
+              submitBtn.disabled = true;
+              submitBtn.textContent = 'Iniciando sesión...';
+              
+              // Simular proceso de autenticación
+              setTimeout(() => {
+                const userData = {
+                  id: 'google_' + Date.now(),
+                  email: email,
+                  name: email.split('@')[0],
+                  provider: 'google',
+                  avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
+                  createdAt: new Date().toISOString()
+                };
+                
+                // Enviar datos al padre
+                if (window.opener) {
+                  window.opener.postMessage({
+                    type: 'GOOGLE_AUTH_SUCCESS',
+                    user: userData
+                  }, '*');
+                }
+                
+                window.close();
+              }, 2000);
+            });
+          </script>
+        </body>
+        </html>
+      `
+
+      popup.document.write(googleAuthHTML)
+      popup.document.close()
+
+      // Escuchar el mensaje del popup
+      return new Promise((resolve, reject) => {
+        const messageHandler = (event) => {
+          if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+            const userData = event.data.user
+            setUser(userData)
+            localStorage.setItem('nutriscan_user', JSON.stringify(userData))
+            window.removeEventListener('message', messageHandler)
+            resolve({ user: userData, error: null })
           }
-        } catch (error) {
-          console.log('Scanner styling error:', error)
         }
-      }, 1500)
 
-    } catch (error) {
-      console.error('Error starting scanner:', error)
-      setIsScanning(false)
-      toast.error('Error al iniciar el escáner. Verifica los permisos de cámara.')
-    }
-  }
+        window.addEventListener('message', messageHandler)
 
-  const stopScanner = async () => {
-    try {
-      if (scannerRef.current) {
-        await scannerRef.current.clear()
-        scannerRef.current = null
-      }
-    } catch (error) {
-      console.log('Error stopping scanner:', error)
-    } finally {
-      setIsScanning(false)
-    }
-  }
-
-  const handleScanSuccess = async (barcode) => {
-    setIsLoading(true)
-    incrementDailyScans()
-    
-    try {
-      await searchProduct(barcode)
-    } catch (error) {
-      toast.error('Error al procesar el código escaneado')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleManualSearch = async () => {
-    if (!manualCode.trim()) {
-      toast.error('Ingresa un código de barras')
-      return
-    }
-
-    if (!canScan()) {
-      toast.error(`Límite diario alcanzado. Plan ${subscriptionType}`)
-      return
-    }
-
-    setIsLoading(true)
-    incrementDailyScans()
-    
-    try {
-      await searchProduct(manualCode.trim())
-    } catch (error) {
-      toast.error('Error al buscar el producto')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const searchProduct = async (barcode) => {
-    // Buscar en base de datos local primero
-    let productData = productDatabase[barcode]
-    
-    if (!productData) {
-      // Buscar en OpenFoodFacts API
-      try {
-        const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`)
-        const data = await response.json()
-        
-        if (data.status === 1 && data.product) {
-          const product = data.product
-          productData = {
-            name: product.product_name || 'Producto sin nombre',
-            brand: product.brands || 'Marca desconocida',
-            image: product.image_url || 'https://via.placeholder.com/200x200?text=Sin+Imagen',
-            nutrition: {
-              calories: product.nutriments?.['energy-kcal_100g'] || 0,
-              protein: product.nutriments?.proteins_100g || 0,
-              carbs: product.nutriments?.carbohydrates_100g || 0,
-              fat: product.nutriments?.fat_100g || 0,
-              fiber: product.nutriments?.fiber_100g || 0,
-              sugar: product.nutriments?.sugars_100g || 0,
-              sodium: product.nutriments?.sodium_100g || 0
-            },
-            ingredients: product.ingredients_text ? product.ingredients_text.split(',').map(i => i.trim()) : [],
-            allergens: product.allergens_tags || []
+        // Verificar si el popup se cerró sin completar
+        const checkClosed = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkClosed)
+            window.removeEventListener('message', messageHandler)
+            reject(new Error('Popup cerrado sin completar autenticación'))
           }
-        }
-      } catch (error) {
-        console.error('Error fetching from OpenFoodFacts:', error)
-      }
-    }
+        }, 1000)
+      })
 
-    if (!productData) {
-      toast.error('Producto no encontrado. Intenta con otro código.')
-      return
+    } catch (error) {
+      return { user: null, error }
     }
-
-    setProduct(productData)
-    
-    // Generar análisis personalizado
-    const analysisResult = generateAnalysis(productData, healthProfile, subscriptionType)
-    setAnalysis(analysisResult)
-    
-    // Guardar en historial
-    addProductToHistory(productData, analysisResult)
-    
-    toast.success('¡Producto encontrado!')
   }
 
-  const generateAnalysis = (product, profile, plan) => {
-    const conditions = profile?.conditions || []
-    const objectives = profile?.objectives || []
+  const signOut = async () => {
+    try {
+      setUser(null)
+      setLocalProfile(null)
+      localStorage.removeItem('nutriscan_user')
+      localStorage.removeItem('nutriscan_local_profile')
+      localStorage.removeItem('nutriscan_health_profile')
+      
+      return { error: null }
+    } catch (error) {
+      return { error }
+    }
+  }
+
+  const continueWithoutAccount = () => {
+    const localUserData = {
+      id: 'local_' + Date.now(),
+      email: null,
+      name: 'Usuario Local',
+      isLocal: true,
+      createdAt: new Date().toISOString()
+    }
     
-    let score = 70 // Score base
-    let recommendations = []
-    let warnings = []
-    let alternatives = []
+    setLocalProfile(localUserData)
+    localStorage.setItem('nutriscan_local_profile', JSON.stringify(localUserData))
+    
+    return { user: localUserData, error: null }
+  }
 
-    // Análisis por condiciones de salud
-    if (conditions.includes('diabetes')) {
-      if (product.nutrition.sugar > 15) {
-        score -= 30
-        warnings.push('Alto contenido de azúcar - No recomendado para diabetes')
-      }
-    }
+  const isAuthenticated = () => {
+    return !!(user || localProfile)
+  }
 
-    if (conditions.includes('hipertension')) {
-      if (product.nutrition.sodium > 300) {
-        score -= 25
-        warnings.push('Alto contenido de sodio - Evitar con hipertensión')
-      }
-    }
+  const getCurrentUser = () => {
+    return user || localProfile
+  }
 
-    if (conditions.includes('celiaquia')) {
-      if (product.allergens.includes('Gluten')) {
-        score = 0
-        warnings.push('CONTIENE GLUTEN - NO CONSUMIR')
-      }
-    }
-
-    // Análisis por objetivos
-    if (objectives.includes('bajar_peso')) {
-      if (product.nutrition.calories > 400) {
-        score -= 20
-        recommendations.push('Alto en calorías - Consumir con moderación')
-      }
-    }
-
-    if (objectives.includes('ganar_masa_muscular')) {
-      if (product.nutrition.protein > 10) {
-        score += 15
-        recommendations.push('Buen contenido proteico para ganancia muscular')
-      }
-    }
-
-    // Alternativas según plan
-    if (plan === 'premium' || plan === 'pro') {
-      alternatives = [
-        'Galletas integrales sin azúcar añadido',
-        'Barras de granola caseras',
-        'Frutos secos naturales'
-      ]
-    }
-
-    return {
-      score: Math.max(0, Math.min(100, score)),
-      level: score >= 70 ? 'good' : score >= 40 ? 'moderate' : 'poor',
-      recommendations,
-      warnings,
-      alternatives: plan === 'free' ? [] : alternatives,
-      analysis: plan === 'free' ? 'Análisis básico disponible' : 'Análisis completo personalizado'
-    }
+  const value = {
+    user,
+    localProfile,
+    loading,
+    signIn,
+    signUp,
+    signInWithGoogle,
+    signOut,
+    continueWithoutAccount,
+    isAuthenticated,
+    getCurrentUser
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
-      <div className="max-w-md mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={() => navigate('/home')}
-            className="p-2 rounded-xl bg-white shadow-md hover:shadow-lg transition-shadow"
-          >
-            <ArrowLeft className="w-6 h-6 text-gray-600" />
-          </button>
-          <h1 className="text-xl font-bold text-gray-900">Escáner</h1>
-          <div className="w-10"></div>
-        </div>
-
-        {/* Scanner Section */}
-        <div className="bg-white rounded-3xl p-6 shadow-xl mb-6">
-          <div className="text-center mb-6">
-            <Camera className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Escanear Producto
-            </h2>
-            <p className="text-gray-600">
-              Apunta la cámara al código de barras del producto
-            </p>
-          </div>
-
-          {!isScanning ? (
-            <button
-              onClick={startScanner}
-              disabled={!canScan()}
-              className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg hover:from-blue-700 hover:to-green-700 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {canScan() ? 'Iniciar Escáner' : 'Límite diario alcanzado'}
-            </button>
-          ) : (
-            <div>
-              <div id="qr-reader" className="mb-4 rounded-xl overflow-hidden"></div>
-              <button
-                onClick={stopScanner}
-                className="w-full bg-red-500 text-white py-3 rounded-xl font-semibold hover:bg-red-600 transition-colors"
-              >
-                Detener Escáner
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Manual Input */}
-        <div className="bg-white rounded-3xl p-6 shadow-xl mb-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">
-            Búsqueda Manual
-          </h3>
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={manualCode}
-              onChange={(e) => setManualCode(e.target.value)}
-              placeholder="Ingresa código de barras"
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button
-              onClick={handleManualSearch}
-              disabled={isLoading || !canScan()}
-              className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Search className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Product Results */}
-        {product && analysis && (
-          <div className="bg-white rounded-3xl p-6 shadow-xl">
-            <div className="flex items-start gap-4 mb-4">
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-20 h-20 rounded-xl object-cover"
-                onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/200x200?text=Sin+Imagen'
-                }}
-              />
-              <div className="flex-1">
-                <h3 className="font-bold text-gray-900">{product.name}</h3>
-                <p className="text-gray-600">{product.brand}</p>
-                <div className={`inline-block px-3 py-1 rounded-full text-sm font-semibold mt-2 ${
-                  analysis.level === 'good' ? 'bg-green-100 text-green-800' :
-                  analysis.level === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
-                  Score: {analysis.score}/100
-                </div>
-              </div>
-            </div>
-
-            {/* Warnings */}
-            {analysis.warnings.length > 0 && (
-              <div className="mb-4">
-                <h4 className="font-semibold text-red-600 mb-2">⚠️ Advertencias:</h4>
-                {analysis.warnings.map((warning, index) => (
-                  <p key={index} className="text-red-600 text-sm mb-1">• {warning}</p>
-                ))}
-              </div>
-            )}
-
-            {/* Recommendations */}
-            {analysis.recommendations.length > 0 && (
-              <div className="mb-4">
-                <h4 className="font-semibold text-blue-600 mb-2">💡 Recomendaciones:</h4>
-                {analysis.recommendations.map((rec, index) => (
-                  <p key={index} className="text-blue-600 text-sm mb-1">• {rec}</p>
-                ))}
-              </div>
-            )}
-
-            {/* Alternatives */}
-            {analysis.alternatives.length > 0 && (
-              <div>
-                <h4 className="font-semibold text-green-600 mb-2">🔄 Alternativas:</h4>
-                {analysis.alternatives.map((alt, index) => (
-                  <p key={index} className="text-green-600 text-sm mb-1">• {alt}</p>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
   )
 }
 
-export default Scanner
+// Exportación por defecto del contexto
+export default AuthContext
