@@ -4,14 +4,37 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="NutriScan Health - Tu asistente nutricional personal con IA" />
-    <meta name="theme-color" content="#3b82f6" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/icon-192x192.png" />
+    <meta name="google-signin-client_id" content="764086051850-6qr4p6gpi6hn506pt8ejuq83di341hur.apps.googleusercontent.com">
     <title>NutriScan Health - Análisis Nutricional Personalizado</title>
+    <meta name="description" content="Escanea productos y recibe recomendaciones personalizadas según tus condiciones de salud.">
+    
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- Preconnect para mejorar rendimiento -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://accounts.google.com">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="NutriScan">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="NutriScan Health">
+    <meta property="og:description" content="Análisis nutricional personalizado">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/og-image.jpg">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="NutriScan Health">
+    <meta name="twitter:description" content="Análisis nutricional personalizado">
   </head>
   <body>
     <div id="root"></div>
-   <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
