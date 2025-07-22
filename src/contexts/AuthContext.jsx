@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
   const initializeGoogleAuth = () => {
     if (window.google && window.google.accounts) {
       window.google.accounts.id.initialize({
-        client_id: '764086051850-6qr4p6gpi6hn506pt8ejuq83di341hur.apps.googleusercontent.com',
+        client_id: '559928680282-h0be8p86c6nje1l4tjq6j7ppqaprq5.apps.googleusercontent.com',
         callback: handleGoogleResponse,
         auto_select: false,
         cancel_on_tap_outside: true
