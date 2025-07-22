@@ -41,7 +41,42 @@ export const AuthProvider = ({ children }) => {
     script.src = 'https://accounts.google.com/gsi/client'
     script.async = true
     script.defer = true
+    script.onload = () => {
+      initializeGoogleAuth()
+    }
     document.head.appendChild(script)
+  }
+
+  const initializeGoogleAuth = () => {
+    if (window.google && window.google.accounts) {
+      window.google.accounts.id.initialize({
+        client_id: '764086051850-6qr4p6gpi6hn506pt8ejuq83di341hur.apps.googleusercontent.com',
+        callback: handleGoogleResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true
+      })
+    }
+  }
+
+  const handleGoogleResponse = (response) => {
+    try {
+      // Decodificar el JWT token
+      const payload = JSON.parse(atob(response.credential.split('.')[1]))
+      
+      const userData = {
+        id: 'google_' + payload.sub,
+        email: payload.email,
+        name: payload.name,
+        provider: 'google',
+        avatar: payload.picture,
+        createdAt: new Date().toISOString()
+      }
+      
+      setUser(userData)
+      localStorage.setItem('nutriscan_user', JSON.stringify(userData))
+    } catch (error) {
+      console.error('Error processing Google response:', error)
+    }
   }
 
   const signIn = async (email, password) => {
@@ -83,78 +118,103 @@ export const AuthProvider = ({ children }) => {
   const signInWithGoogle = async () => {
     return new Promise((resolve, reject) => {
       try {
-        // Verificar si Google Identity Services está disponible
-        if (typeof window.google === 'undefined') {
-          // Fallback: usar window.open con OAuth URL real
-          const clientId = '1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com' // Placeholder
-          const redirectUri = encodeURIComponent(window.location.origin + '/auth/google/callback')
-          const scope = encodeURIComponent('openid email profile')
-          const responseType = 'code'
-          const state = Math.random().toString(36).substring(2, 15)
-          
-          const googleAuthUrl = `https://accounts.google.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=${responseType}&state=${state}`
-          
-          const popup = window.open(
-            googleAuthUrl,
-            'google-auth',
-            'width=500,height=600,scrollbars=yes,resizable=yes'
-          )
-
-          // Monitorear el popup
-          const checkClosed = setInterval(() => {
-            if (popup.closed) {
-              clearInterval(checkClosed)
-              // Simular datos de usuario para demo
-              const userData = {
-                id: 'google_' + Date.now(),
-                email: 'usuario@gmail.com',
-                name: 'Usuario Google',
-                provider: 'google',
-                avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
-                createdAt: new Date().toISOString()
-              }
-              
-              setUser(userData)
-              localStorage.setItem('nutriscan_user', JSON.stringify(userData))
-              resolve({ user: userData, error: null })
+        if (window.google && window.google.accounts) {
+          // Usar Google One Tap
+          window.google.accounts.id.prompt((notification) => {
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+              // Si One Tap no se muestra, usar el botón de Google
+              renderGoogleButton(resolve, reject)
+            }
+          })
+        } else {
+          // Fallback si Google no está disponible
+          setTimeout(() => {
+            if (window.google && window.google.accounts) {
+              renderGoogleButton(resolve, reject)
+            } else {
+              reject(new Error('Google Services no disponible'))
             }
           }, 1000)
-
-          return
         }
-
-        // Usar Google Identity Services si está disponible
-        window.google.accounts.id.initialize({
-          client_id: '1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com', // Placeholder
-          callback: (response) => {
-            try {
-              // Decodificar el JWT token
-              const payload = JSON.parse(atob(response.credential.split('.')[1]))
-              
-              const userData = {
-                id: 'google_' + payload.sub,
-                email: payload.email,
-                name: payload.name,
-                provider: 'google',
-                avatar: payload.picture,
-                createdAt: new Date().toISOString()
-              }
-              
-              setUser(userData)
-              localStorage.setItem('nutriscan_user', JSON.stringify(userData))
-              resolve({ user: userData, error: null })
-            } catch (error) {
-              reject({ user: null, error })
-            }
-          }
-        })
-
-        window.google.accounts.id.prompt()
-        
       } catch (error) {
-        reject({ user: null, error })
+        reject(error)
       }
     })
+  }
+
+  const renderGoogleButton = (resolve, reject) => {
+    // Crear un div temporal para el botón de Google
+    const buttonDiv = document.createElement('div')
+    buttonDiv.id = 'google-signin-button'
+    buttonDiv.style.position = 'fixed'
+    buttonDiv.style.top = '50%'
+    buttonDiv.style.left = '50%'
+    buttonDiv.style.transform = 'translate(-50%, -50%)'
+    buttonDiv.style.zIndex = '10000'
+    buttonDiv.style.backgroundColor = 'white'
+    buttonDiv.style.padding = '20px'
+    buttonDiv.style.borderRadius = '8px'
+    buttonDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
+    
+    document.body.appendChild(buttonDiv)
+
+    // Crear overlay
+    const overlay = document.createElement('div')
+    overlay.style.position = 'fixed'
+    overlay.style.top = '0'
+    overlay.style.left = '0'
+    overlay.style.width = '100%'
+    overlay.style.height = '100%'
+    overlay.style.backgroundColor = 'rgba(0,0,0,0.5)'
+    overlay.style.zIndex = '9999'
+    overlay.onclick = () => {
+      document.body.removeChild(buttonDiv)
+      document.body.removeChild(overlay)
+      reject(new Error('Cancelado por el usuario'))
+    }
+    
+    document.body.appendChild(overlay)
+
+    // Renderizar botón de Google
+    window.google.accounts.id.renderButton(buttonDiv, {
+      theme: 'outline',
+      size: 'large',
+      text: 'continue_with',
+      shape: 'rectangular',
+      logo_alignment: 'left'
+    })
+
+    // Configurar callback temporal
+    const originalCallback = window.google.accounts.id.callback
+    window.google.accounts.id.callback = (response) => {
+      try {
+        // Limpiar elementos
+        document.body.removeChild(buttonDiv)
+        document.body.removeChild(overlay)
+        
+        // Procesar respuesta
+        const payload = JSON.parse(atob(response.credential.split('.')[1]))
+        
+        const userData = {
+          id: 'google_' + payload.sub,
+          email: payload.email,
+          name: payload.name,
+          provider: 'google',
+          avatar: payload.picture,
+          createdAt: new Date().toISOString()
+        }
+        
+        setUser(userData)
+        localStorage.setItem('nutriscan_user', JSON.stringify(userData))
+        
+        // Restaurar callback original
+        window.google.accounts.id.callback = originalCallback
+        
+        resolve({ user: userData, error: null })
+      } catch (error) {
+        reject(error)
+      }
+    }
   }
 
   const signOut = async () => {
