@@ -1,13 +1,12 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { ArrowLeft, Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 import { toast } from 'react-toastify'
-import { ArrowLeft, Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import GoogleAuthButton from '../components/GoogleAuthButton'
 
 const Auth = () => {
   const navigate = useNavigate()
-  const { signIn, signUp, continueWithoutAccount, signInWithGoogle } = useAuth()
-  
   const [isLogin, setIsLogin] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -15,6 +14,8 @@ const Auth = () => {
     email: '',
     password: ''
   })
+
+  const { signIn, signUp, continueWithoutAccount } = useAuth()
 
   const handleInputChange = (e) => {
     setFormData({
@@ -28,71 +29,74 @@ const Auth = () => {
     setLoading(true)
 
     try {
-      const { user, error } = isLogin 
-        ? await signIn(formData.email, formData.password)
-        : await signUp(formData.email, formData.password)
+      const { email, password } = formData
 
-      if (error) {
-        toast.error(error.message || 'Error en la autenticación')
+      if (!email || !password) {
+        toast.error('Por favor completa todos los campos')
         return
       }
 
-      if (user) {
-        toast.success(isLogin ? 'Sesión iniciada correctamente' : 'Cuenta creada correctamente')
+      const result = isLogin 
+        ? await signIn(email, password)
+        : await signUp(email, password)
+
+      if (result.error) {
+        toast.error('Error en la autenticación')
+      } else {
+        toast.success(isLogin ? '¡Bienvenido!' : '¡Cuenta creada exitosamente!')
         navigate('/profile')
       }
     } catch (error) {
-      toast.error('Error inesperado')
+      toast.error('Error en la autenticación')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleContinueWithoutAccount = () => {
-    try {
-      const { user, error } = continueWithoutAccount()
-      
-      if (error) {
-        toast.error('Error al continuar sin cuenta')
-        return
-      }
+  const handleGoogleSuccess = (user) => {
+    toast.success(`¡Bienvenido ${user.name}!`)
+    navigate('/profile')
+  }
 
-      if (user) {
-        toast.success('Continuando sin cuenta')
-        navigate('/profile')
-      }
-    } catch (error) {
-      toast.error('Error inesperado')
-    }
+  const handleGoogleError = (error) => {
+    toast.error('Error al iniciar sesión con Google')
+    console.error('Google Auth Error:', error)
+  }
+
+  const handleContinueWithoutAccount = () => {
+    continueWithoutAccount()
+    toast.success('Continuando sin cuenta')
+    navigate('/profile')
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 via-white to-green-50">
-      <div className="max-w-md w-full">
-        {/* Botón de volver */}
-        <button
-          onClick={() => navigate('/')}
-          className="flex items-center text-gray-600 hover:text-gray-800 mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Volver
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
+      <div className="max-w-md mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <button
+            onClick={() => navigate('/')}
+            className="p-2 rounded-xl bg-white shadow-md hover:shadow-lg transition-shadow"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-600" />
+          </button>
+          <h1 className="text-xl font-bold text-gray-900">Volver</h1>
+          <div className="w-10"></div>
+        </div>
 
-        {/* Tarjeta principal */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 border border-gray-100">
-          {/* Header */}
+        {/* Auth Form */}
+        <div className="bg-white rounded-3xl p-8 shadow-xl">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {isLogin ? 'Bienvenido de nuevo' : 'Crear cuenta'}
-            </h1>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Bienvenido de nuevo
+            </h2>
             <p className="text-gray-600">
-              {isLogin ? 'Ingresa tus credenciales para continuar' : 'Únete a NutriScan AI hoy'}
+              Ingresa tus credenciales para continuar
             </p>
           </div>
 
-          {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email */}
+            {/* Email Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Correo electrónico
@@ -105,13 +109,13 @@ const Auth = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="tu@email.com"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
               </div>
             </div>
 
-            {/* Password */}
+            {/* Password Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Contraseña
@@ -124,7 +128,7 @@ const Auth = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
                 <button
@@ -137,83 +141,49 @@ const Auth = () => {
               </div>
             </div>
 
-            {/* Botón principal */}
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white font-semibold py-3 px-6 rounded-xl hover:from-blue-700 hover:to-green-700 transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-green-700 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Procesando...
-                </div>
-              ) : (
-                isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'
-              )}
+              {loading ? 'Procesando...' : (isLogin ? 'Iniciar Sesión' : 'Crear Cuenta')}
             </button>
           </form>
 
-          {/* Toggle entre login/registro */}
+          {/* Toggle Login/Register */}
           <div className="text-center mt-6">
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+              className="text-blue-600 hover:text-blue-700 font-medium"
             >
               {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
             </button>
           </div>
 
-          {/* Separador */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">o</span>
-            </div>
+          {/* Divider */}
+          <div className="flex items-center my-6">
+            <div className="flex-1 border-t border-gray-300"></div>
+            <span className="px-4 text-gray-500 text-sm">o</span>
+            <div className="flex-1 border-t border-gray-300"></div>
           </div>
 
-          {/* Botón Google */}
-          <button
-            onClick={async () => {
-              try {
-                const { user, error } = await signInWithGoogle()
-                
-                if (error) {
-                  toast.error('Error al iniciar sesión con Google')
-                  return
-                }
+          {/* Google Auth Button */}
+          <GoogleAuthButton 
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+          />
 
-                if (user) {
-                  toast.success('Sesión iniciada con Google')
-                  navigate('/profile')
-                }
-              } catch (error) {
-                toast.error('Error inesperado')
-              }
-            }}
-            className="w-full bg-white border border-gray-300 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-3 mb-4"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Continuar con Google
-          </button>
-
-          {/* Continuar sin cuenta */}
+          {/* Continue Without Account */}
           <button
             onClick={handleContinueWithoutAccount}
-            className="w-full flex items-center justify-center py-3 px-6 border border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-all duration-300 font-medium"
+            className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors text-gray-700"
           >
-            <User className="w-5 h-5 mr-2" />
+            <User className="w-5 h-5" />
             Continuar sin cuenta
           </button>
 
-          <p className="text-xs text-gray-500 text-center mt-4">
+          <p className="text-center text-xs text-gray-500 mt-4">
             Al continuar sin cuenta, tus datos se guardarán localmente en tu dispositivo
           </p>
         </div>
@@ -223,4 +193,3 @@ const Auth = () => {
 }
 
 export default Auth
-
