@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Html5QrcodeScanner } from 'html5-qrcode'
-import { Camera, ArrowLeft, Search, Loader2 } from 'lucide-react'
+import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode'
+import { Camera, ArrowLeft, Search, Loader2, X } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { usePremium } from '../contexts/PremiumContext'
 import { useProductHistory } from '../contexts/ProductHistoryContext'
@@ -14,7 +14,9 @@ const Scanner = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [product, setProduct] = useState(null)
   const [analysis, setAnalysis] = useState(null)
+  const [cameraError, setCameraError] = useState(null)
   const scannerRef = useRef(null)
+  const html5QrCodeRef = useRef(null)
   const { canScan, incrementDailyScans, subscriptionType } = usePremium()
   const { addProductToHistory } = useProductHistory()
   const { healthProfile } = useHealthProfile()
@@ -71,77 +73,136 @@ const Scanner = () => {
     }
   }
 
-  useEffect(( ) => {
+  useEffect(() => {
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear()
-      }
+      cleanupScanner()
     }
   }, [])
 
-  const startScanner = () => {
+  const cleanupScanner = async () => {
+    try {
+      if (html5QrCodeRef.current) {
+        if (html5QrCodeRef.current.getState() === Html5Qrcode.STATE_SCANNING) {
+          await html5QrCodeRef.current.stop()
+        }
+        await html5QrCodeRef.current.clear()
+        html5QrCodeRef.current = null
+      }
+    } catch (error) {
+      console.log('Cleanup error:', error)
+    }
+  }
+
+  const startScanner = async () => {
     if (!canScan()) {
       toast.error(`Límite diario alcanzado. Plan ${subscriptionType}: ${subscriptionType === 'free' ? '3' : subscriptionType === 'premium' ? '50' : '∞'} escaneos/día`)
       return
     }
 
-    setIsScanning(true)
-    
-    const config = {
-      fps: 10,
-      qrbox: { width: 250, height: 250 },
-      aspectRatio: 1.0,
-      // CONFIGURACIÓN AUTOMÁTICA PARA CÁMARA POSTERIOR
-      videoConstraints: {
-        facingMode: { exact: "environment" }, // Fuerza cámara posterior
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      },
-      // Formatos soportados
-      formatsToSupport: [
-        Html5QrcodeScanner.SCAN_TYPE_CAMERA
-      ],
-      // Configuración avanzada
-      experimentalFeatures: {
-        useBarCodeDetectorIfSupported: true
+    try {
+      setIsScanning(true)
+      setCameraError(null)
+      
+      // Limpiar scanner anterior
+      await cleanupScanner()
+
+      // Crear nuevo scanner
+      html5QrCodeRef.current = new Html5Qrcode("qr-reader")
+
+      // Obtener cámaras disponibles
+      const devices = await Html5Qrcode.getCameras()
+      
+      if (devices && devices.length > 0) {
+        // Buscar cámara posterior
+        let cameraId = devices[0].id // Por defecto la primera
+        
+        // Intentar encontrar cámara posterior
+        const backCamera = devices.find(device => 
+          device.label.toLowerCase().includes('back') ||
+          device.label.toLowerCase().includes('rear') ||
+          device.label.toLowerCase().includes('environment')
+        )
+        
+        if (backCamera) {
+          cameraId = backCamera.id
+        } else if (devices.length > 1) {
+          // Si hay múltiples cámaras, usar la segunda (generalmente es la posterior)
+          cameraId = devices[1].id
+        }
+
+        // Configuración de la cámara
+        const config = {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          // Configuración para mejor rendimiento
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+          }
+        }
+
+        // Iniciar scanner
+        await html5QrCodeRef.current.start(
+          cameraId,
+          config,
+          (decodedText) => {
+            handleScanSuccess(decodedText)
+          },
+          (error) => {
+            // Silenciar errores comunes de escaneo
+            if (!error.includes('NotFoundException') && 
+                !error.includes('No MultiFormat Readers') &&
+                !error.includes('No code found')) {
+              console.warn('Scanner error:', error)
+            }
+          }
+        )
+
+        // Aplicar estilos después de iniciar
+        setTimeout(() => {
+          const videoElement = document.querySelector('#qr-reader video')
+          if (videoElement) {
+            videoElement.style.borderRadius = '12px'
+            videoElement.style.width = '100%'
+            videoElement.style.height = 'auto'
+          }
+          
+          const scannerElement = document.getElementById('qr-reader')
+          if (scannerElement) {
+            scannerElement.style.border = '2px solid #3b82f6'
+            scannerElement.style.borderRadius = '12px'
+            scannerElement.style.overflow = 'hidden'
+          }
+        }, 1000)
+
+      } else {
+        throw new Error('No se encontraron cámaras disponibles')
+      }
+
+    } catch (error) {
+      console.error('Error starting scanner:', error)
+      setIsScanning(false)
+      setCameraError(error.message)
+      
+      if (error.message.includes('Permission denied')) {
+        toast.error('Permisos de cámara denegados. Por favor, permite el acceso a la cámara.')
+      } else if (error.message.includes('NotFoundError')) {
+        toast.error('No se encontró ninguna cámara en el dispositivo.')
+      } else {
+        toast.error('Error al iniciar el escáner: ' + error.message)
       }
     }
-
-    scannerRef.current = new Html5QrcodeScanner("qr-reader", config, false)
-    
-    scannerRef.current.render(
-      (decodedText) => {
-        handleScanSuccess(decodedText)
-        scannerRef.current.clear()
-        setIsScanning(false)
-      },
-      (error) => {
-        // Silenciar errores de escaneo continuo
-        if (!error.includes('NotFoundException')) {
-          console.warn('Scanner error:', error)
-        }
-      }
-    )
-
-    // Ocultar selector de cámara automáticamente
-    setTimeout(() => {
-      const cameraSelection = document.getElementById('qr-reader__camera_selection')
-      if (cameraSelection) {
-        cameraSelection.style.display = 'none'
-      }
-      
-      const cameraPermission = document.getElementById('qr-reader__camera_permission_button')
-      if (cameraPermission) {
-        cameraPermission.style.display = 'none'
-      }
-    }, 1000)
   }
 
-  const stopScanner = () => {
-    if (scannerRef.current) {
-      scannerRef.current.clear()
+  const stopScanner = async () => {
+    try {
+      await cleanupScanner()
+    } catch (error) {
+      console.log('Error stopping scanner:', error)
+    } finally {
+      setIsScanning(false)
+      setCameraError(null)
     }
-    setIsScanning(false)
   }
 
   const handleScanSuccess = async (barcode) => {
@@ -149,6 +210,7 @@ const Scanner = () => {
     incrementDailyScans()
     
     try {
+      await stopScanner()
       await searchProduct(barcode)
     } catch (error) {
       toast.error('Error al procesar el código escaneado')
@@ -187,7 +249,7 @@ const Scanner = () => {
     if (!productData) {
       // Buscar en OpenFoodFacts API
       try {
-        const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json` )
+        const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`)
         const data = await response.json()
         
         if (data.status === 1 && data.product) {
@@ -205,7 +267,7 @@ const Scanner = () => {
               sugar: product.nutriments?.sugars_100g || 0,
               sodium: product.nutriments?.sodium_100g || 0
             },
-            ingredients: product.ingredients_text ? product.ingredients_text.split(',' ).map(i => i.trim()) : [],
+            ingredients: product.ingredients_text ? product.ingredients_text.split(',').map(i => i.trim()) : [],
             allergens: product.allergens_tags || []
           }
         }
@@ -324,20 +386,37 @@ const Scanner = () => {
           </div>
 
           {!isScanning ? (
-            <button
-              onClick={startScanner}
-              disabled={!canScan()}
-              className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg hover:from-blue-700 hover:to-green-700 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {canScan() ? 'Iniciar Escáner' : 'Límite diario alcanzado'}
-            </button>
+            <div>
+              <button
+                onClick={startScanner}
+                disabled={!canScan()}
+                className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg hover:from-blue-700 hover:to-green-700 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+              >
+                {canScan() ? 'Iniciar Escáner' : 'Límite diario alcanzado'}
+              </button>
+              
+              {cameraError && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                  <p className="text-red-600 text-sm">
+                    <strong>Error de cámara:</strong> {cameraError}
+                  </p>
+                  <p className="text-red-500 text-xs mt-2">
+                    Asegúrate de permitir el acceso a la cámara en tu navegador.
+                  </p>
+                </div>
+              )}
+            </div>
           ) : (
             <div>
-              <div id="qr-reader" className="mb-4"></div>
+              <div id="qr-reader" className="mb-4 rounded-xl overflow-hidden min-h-[300px] bg-gray-100 flex items-center justify-center">
+                {/* El scanner se renderizará aquí */}
+                <div className="text-gray-500">Iniciando cámara...</div>
+              </div>
               <button
                 onClick={stopScanner}
-                className="w-full bg-red-500 text-white py-3 rounded-xl font-semibold hover:bg-red-600 transition-colors"
+                className="w-full bg-red-500 text-white py-3 rounded-xl font-semibold hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
               >
+                <X className="w-5 h-5" />
                 Detener Escáner
               </button>
             </div>
@@ -379,6 +458,9 @@ const Scanner = () => {
                 src={product.image}
                 alt={product.name}
                 className="w-20 h-20 rounded-xl object-cover"
+                onError={(e) => {
+                  e.target.src = 'https://via.placeholder.com/200x200?text=Sin+Imagen'
+                }}
               />
               <div className="flex-1">
                 <h3 className="font-bold text-gray-900">{product.name}</h3>
